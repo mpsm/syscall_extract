@@ -10,11 +10,11 @@ src_dir = os.path.join(script_dir, "extract-syscalls", "src")
 sys.path.append(src_dir)
 
 # Import modules
-from logging_utils import setup_logging
-from cli import parse_arguments
-from libclang_utils import check_libclang_path
-from syscall_extractor import extract_syscalls, SYSTEM_HEADERS
-from output_formatter import (
+from .logging_utils import setup_logging
+from .cli import parse_arguments
+from .libclang_utils import check_libclang_path
+from .syscall_extractor import extract_syscalls, SYSTEM_HEADERS
+from .output_formatter import (
     format_output_json,
     format_output_text,
     format_output_header,

@@ -266,10 +266,6 @@ def extract_extern_functions(
 
                     # Extract detailed type information
                     underlying_type = cursor.underlying_typedef_type.spelling
-                    underlying_type_info = extract_type_info(
-                        cursor.underlying_typedef_type
-                    )
-                    type_store[underlying_type] = underlying_type_info
 
                     typedefs.append(
                         Typedef(
@@ -277,9 +273,7 @@ def extract_extern_functions(
                             underlying_type=underlying_type,
                         )
                     )
-                    logging.debug(
-                        f"Found typedef: {typedef_name} -> {underlying_type_info.name}"
-                    )
+                    logging.debug(f"Found typedef: {typedef_name} -> {underlying_type}")
                 except Exception as e:
                     logging.debug(f"Error processing typedef: {e}")
                     pass

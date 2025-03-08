@@ -2,8 +2,8 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from header_utils import expand_macros, expand, find_header_files
-from function_extractor import Function, Typedef, TypeInfo, extract_extern_functions
+from .header_utils import expand_macros, expand, find_header_files
+from .function_extractor import Function, Typedef, TypeInfo, extract_extern_functions
 
 # System headers that might contain syscall information
 # Complete list of POSIX headers organized by functionality
