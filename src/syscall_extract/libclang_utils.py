@@ -110,7 +110,7 @@ def verify_libclang_version(
             logging.info(f"Extracted libclang version {actual_version} from filename")
             return actual_version == expected_version
 
-        logging.warning(f"Could not extract version from SONAME or filename")
+        logging.warning("Could not extract version from SONAME or filename")
         return True  # Continue anyway
 
     except subprocess.SubprocessError as e:

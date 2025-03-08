@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .header_utils import expand_macros, expand, find_header_files
 from .function_extractor import Function, Typedef, TypeInfo, extract_extern_functions
@@ -113,15 +113,17 @@ def extract_syscall_numbers(expanded_content: str) -> Dict[str, int]:
         if not name.startswith(NR_PATTERN):
             continue
 
-        name = name[len(NR_PATTERN) :]
+        name = name[len(NR_PATTERN):]
         nr_count += 1
 
         try:
             syscall_numbers[name] = int(number)
-            logging.debug(f"Found syscall: {original_name} -> {name} = {number}")
+            logging.debug(
+                f"Found syscall: {original_name} -> {name} = {number}")
         except ValueError:
             # If it's not a direct number, it might be another macro
-            logging.debug(f"Skipping non-numeric syscall: {original_name} = {number}")
+            logging.debug(
+                f"Skipping non-numeric syscall: {original_name} = {number}")
 
     logging.debug(f"Found {nr_count} defines")
     logging.debug(f"Extracted {len(syscall_numbers)} unique syscall numbers")
@@ -144,7 +146,8 @@ def extract_syscalls(args) -> SyscallsContext:
     # Create initial Syscall objects without function definitions
     syscalls = {}
     for name, number in syscall_numbers.items():
-        syscalls[number] = Syscall(name=name, number=number, header_name=syscall_header)
+        syscalls[number] = Syscall(
+            name=name, number=number, header_name=syscall_header)
 
     # Step 2: Find header files that might contain function definitions
     found_headers = find_header_files(args.gcc, SYSTEM_HEADERS)
@@ -208,7 +211,8 @@ def extract_syscalls(args) -> SyscallsContext:
         f"Found {len(typedefs_store)} typedefs in system headers, {len(typedefs_needed)} needed"
     )
 
-    logging.debug(f"Found {len(type_store)} unique relevant types in system headers")
+    logging.debug(
+        f"Found {len(type_store)} unique relevant types in system headers")
 
     return SyscallsContext(
         syscalls=syscalls, typedefs=list(typedefs_store.values()), type_store=type_store

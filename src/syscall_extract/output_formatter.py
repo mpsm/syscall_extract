@@ -2,11 +2,9 @@ import json
 import logging
 import os
 from collections import defaultdict
-from typing import Dict, List
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
-from .function_extractor import Typedef
-from .syscall_extractor import Syscall, SyscallsContext
+from .syscall_extractor import SyscallsContext
 
 
 def format_output_json(syscalls_ctx: SyscallsContext) -> str:

@@ -292,7 +292,8 @@ def extract_extern_functions(
         # Clean up temporary file
         try:
             os.unlink(temp_filename)
-        except:
+        except Exception as e:
+            logging.error(f"Error cleaning up temporary file: {e}")
             pass
 
 
