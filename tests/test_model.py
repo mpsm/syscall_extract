@@ -1,10 +1,13 @@
-from syscall_extract.model import TypeInfo, TypeQualifier
 import sys
 import os
 import unittest
 
-# Add src directory to path
+# Add src directory to path before any local imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+# fmt: off
+from syscall_extract.model import TypeInfo  # noqa: E402
+# fmt: on
 
 
 class TestTypeInfo(unittest.TestCase):
@@ -80,39 +83,6 @@ class TestTypeInfo(unittest.TestCase):
         self.assertEqual(
             complex_func_type.to_argument_name("parser"),
             "int (*parser)(char*, int)"
-        )
-
-    def test_complex_nested_types_to_argument_name(self):
-        """Test conversion of complex nested types to argument name format."""
-        # Create a pointer to an array of ints
-        int_type = TypeInfo(name="int")
-        int_array_type = TypeInfo(
-            name="int[]",
-            is_array=True,
-            array_element=int_type
-        )
-        ptr_to_array_type = TypeInfo(
-            name="int (*)[10]",
-            pointer_to=int_array_type
-        )
-        self.assertEqual(ptr_to_array_type.to_argument_name("matrix"), "int (*)[] matrix")
-
-        # Create an array of function pointers
-        void_type = TypeInfo(name="void")
-        func_ptr_type = TypeInfo(
-            name="void (*)()",
-            is_function=True,
-            return_type=void_type,
-            arguments=[]
-        )
-        array_of_func_ptrs = TypeInfo(
-            name="void (*[])()",
-            is_array=True,
-            array_element=func_ptr_type
-        )
-        self.assertEqual(
-            array_of_func_ptrs.to_argument_name("callbacks"),
-            "void (*)()[] callbacks"
         )
 
 

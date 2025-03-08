@@ -1,9 +1,9 @@
 import logging
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict
 
 from .header_utils import expand_macros, expand, find_header_files
-from .function_extractor import Function, Typedef, TypeInfo, extract_extern_functions
+from .function_extractor import extract_extern_functions
+from .model import Syscall, SyscallsContext
 
 # System headers that might contain syscall information
 # Complete list of POSIX headers organized by functionality
@@ -67,21 +67,6 @@ SYSTEM_HEADERS = [
     "nl_types.h",  # Message catalogs
     "syslog.h",  # System error logging
 ]
-
-
-@dataclass
-class Syscall:
-    name: str
-    number: int
-    header_name: str
-    function: Optional[Function] = None
-
-
-@dataclass
-class SyscallsContext:
-    syscalls: Dict[int, Syscall]
-    typedefs: List[Typedef]
-    type_store: Dict[str, TypeInfo]
 
 
 def extract_syscall_numbers(expanded_content: str) -> Dict[str, int]:

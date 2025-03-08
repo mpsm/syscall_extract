@@ -10,7 +10,6 @@ from .output_formatter import (
     write_output,
 )
 
-
 import sys
 import logging
 import os

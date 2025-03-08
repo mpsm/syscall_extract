@@ -1,82 +1,10 @@
 import logging
 import os
 import tempfile
-from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 from clang.cindex import Index, CursorKind, TranslationUnit, TypeKind
-
-
-class TypeQualifier(Enum):
-    CONST = auto()
-    VOLATILE = auto()
-    RESTRICT = auto()
-
-
-class StorageClass(Enum):
-    AUTO = auto()
-    REGISTER = auto()
-    STATIC = auto()
-    EXTERN = auto()
-    TYPEDEF = auto()
-
-
-class StructType(Enum):
-    STRUCT = auto()
-    UNION = auto()
-    ENUM = auto()
-
-
-@dataclass
-class TypeInfo:
-    name: str
-    base_type: Optional[str] = None
-    qualifiers: List[TypeQualifier] = None
-    storage_class: Optional[StorageClass] = None
-
-    pointer_to: Optional["TypeInfo"] = None
-
-    is_array: bool = False
-    array_size: Optional[int] = None
-    array_element: Optional["TypeInfo"] = None
-
-    is_function: bool = False
-    return_type: Optional["TypeInfo"] = None
-    arguments: Optional[List["TypeInfo"]] = None
-
-    is_structural: bool = False
-    struct_type: Optional[StructType] = None
-    struct_fields: Optional[List["TypeInfo"]] = None
-
-    def is_primitive(self) -> bool:
-        return (
-            self.base_type == self.name
-            and not self.is_structural
-            and not self.is_array
-            and not self.is_function
-            and self.qualifiers is None
-            and self.storage_class is None
-        )
-
-
-@dataclass
-class Typedef:
-    name: str
-    underlying_type: str
-
-
-@dataclass
-class FunctionArg:
-    name: str
-    type: str
-
-
-@dataclass
-class Function:
-    name: str
-    return_type: str
-    arguments: List[FunctionArg]
+from .model import TypeQualifier, StorageClass, StructType, TypeInfo, Typedef, FunctionArg, Function
 
 
 def extract_type_info(clang_type) -> TypeInfo:

@@ -4,7 +4,7 @@ import os
 from collections import defaultdict
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
-from .syscall_extractor import SyscallsContext
+from .model import SyscallsContext
 
 
 def format_output_json(syscalls_ctx: SyscallsContext) -> str:
