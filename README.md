@@ -28,9 +28,6 @@ The extracted information can be output in JSON, C header or a human-readable te
    chmod +x llvm.sh
    sudo ./llvm.sh 17  # Replace with desired LLVM version
    sudo apt-get install libclang-17-dev python3-clang-17
-   
-   # Fedora/RHEL
-   sudo dnf install clang-devel
    ```
 
 2. Install the package:
@@ -96,15 +93,7 @@ syscall-extract --format header --output syscalls.h
 
 ### LibClang Issues
 
-If you encounter libclang-related errors:
-
-1. Install the appropriate libclang version:
-   ```bash
-   sudo apt-get install libclang-X-dev python3-clang-X
-   ```
-   Replace X with the version number matching your installed Python clang module.
-
-2. Use the `--libclang-path` option to explicitly specify the path:
+  Use the `--libclang-path` option to explicitly specify the path, if you encounter `libclang` version issues:
    ```bash
    syscall-extract --libclang-path /path/to/libclang.so
    ```
