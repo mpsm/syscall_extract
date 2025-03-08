@@ -174,8 +174,8 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
         lines.append("/* Type definitions */")
         for typedef in sorted(syscalls_ctx.typedefs, key=lambda t: t.name):
             if "(" in typedef.underlying_type or "[" in typedef.underlying_type:
-                # Output function pointers and arrays as comments
-                lines.append(f"/* typedef {typedef.underlying_type} {typedef.name}; */")
+                lines.append(
+                    f"typedef {syscalls_ctx.type_store[typedef.underlying_type].to_argument_name(typedef.name)};")
                 continue
             lines.append(f"typedef {typedef.underlying_type} {typedef.name};")
         lines.append("")

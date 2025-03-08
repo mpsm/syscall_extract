@@ -192,8 +192,9 @@ def extract_extern_functions(
                 try:
                     typedef_name = cursor.spelling
 
-                    # Extract detailed type information
-                    underlying_type = cursor.underlying_typedef_type.spelling
+                    # Extract detailed type information; get the canonical type to avoid recursive typedefs
+                    underlying_type = cursor.underlying_typedef_type.get_canonical().spelling
+                    type_store[underlying_type] = extract_type_info(cursor.underlying_typedef_type)
 
                     typedefs.append(
                         Typedef(
