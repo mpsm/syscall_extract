@@ -3,3 +3,4 @@ dist
 __pycache__
 *.pyc
 syscalls.*
+.vscode/c_cpp_properties.json

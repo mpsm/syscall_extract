@@ -162,6 +162,10 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
         "#ifdef __cplusplus",
         'extern "C" {',
         "#endif",
+        ""
+        "#ifndef restrict",
+        "#define restrict __restrict",
+        "#endif",
         "",
     ]
 
@@ -191,7 +195,7 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
     for number, syscall in sorted(syscalls_ctx.syscalls.items()):
         if syscall.function:
             args_str = ", ".join(
-                f"{arg.type} {arg.name}" if arg.name else arg.type
+                f"{syscalls_ctx.type_store[arg.type].to_argument_name(arg.name)}"
                 for arg in syscall.function.arguments
             )
             lines.append(

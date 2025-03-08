@@ -43,7 +43,7 @@ def test_array_type_to_argument_name():
         is_array=True,
         array_element=int_type
     )
-    assert array_type.to_argument_name("arr") == "int[] arr"
+    assert array_type.to_argument_name("arr") == "int arr[]"
 
     # Create an array of char pointers
     char_type = TypeInfo(name="char")
@@ -51,9 +51,10 @@ def test_array_type_to_argument_name():
     array_of_ptrs_type = TypeInfo(
         name="char*[]",
         is_array=True,
-        array_element=char_ptr_type
+        array_element=char_ptr_type,
+        array_size=2
     )
-    assert array_of_ptrs_type.to_argument_name("arr") == "char*[] arr"
+    assert array_of_ptrs_type.to_argument_name("arr") == "char* arr[2]"
 
 
 def test_function_pointer_to_argument_name():

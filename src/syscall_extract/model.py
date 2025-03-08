@@ -58,8 +58,15 @@ class TypeInfo:
         return self.pointer_to is not None
 
     def to_argument_name(self, argument_name: str) -> str:
-        if self.is_pointer() or self.is_array:
+        if self.is_pointer():
             return f"{self.name} {argument_name}"
+        elif self.is_array:
+            arg_name = f"{self.array_element.name} {argument_name}"
+            if self.array_size is not None:
+                arg_name += f"[{self.array_size}]"
+            else:
+                arg_name += "[]"
+            return arg_name
         elif self.is_function:
             arg_name = f"{self.return_type.name} (*{argument_name})("
             arg_name += ", ".join(arg.name for arg in self.arguments)
