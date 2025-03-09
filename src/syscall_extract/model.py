@@ -44,6 +44,19 @@ class TypeInfo:
     struct_type: Optional[StructType] = None
     struct_fields: Optional[List["TypeInfo"]] = None
 
+    def __str__(self):
+        if self.is_structural:
+            if self.struct_type == StructType.ENUM:
+                return f"enum {self.name}"
+            elif self.struct_type == StructType.UNION:
+                return f"union {self.name}"
+            elif self.struct_type == StructType.STRUCT:
+                return f"struct {self.name}"
+            else:
+                raise ValueError("Unknown struct type")
+
+        return self.name
+
     def is_primitive(self) -> bool:
         return (
             self.base_type == self.name

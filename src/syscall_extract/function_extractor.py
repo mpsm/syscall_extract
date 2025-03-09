@@ -7,10 +7,23 @@ from clang.cindex import Index, CursorKind, TranslationUnit, TypeKind
 from .model import TypeQualifier, StorageClass, StructType, TypeInfo, Typedef, FunctionArg, Function
 
 
-def extract_type_info(clang_type) -> TypeInfo:
+def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
     """Extract detailed type information from a clang type."""
 
-    logging.debug(f"Extracting type info for {clang_type.spelling}")
+    logging.debug(f"Extracting type info for {clang_type.spelling}, kind: {clang_type.kind}")
+
+    if processing_types is None:
+        processing_types = list()
+    else:
+        logging.debug(f"Processing types: {'->'.join(processing_types)}")
+
+    currently_processing = f"{clang_type.spelling + ' ' + str(clang_type.kind)}"
+
+    if currently_processing in processing_types and clang_type.kind == TypeKind.ELABORATED:
+        logging.debug(f"Already processing elaborated type: {clang_type.spelling}, breaking recursion")
+        return TypeInfo(name=clang_type.spelling)
+    else:
+        processing_types.append(currently_processing)
 
     # Extract qualifiers
     qualifiers = []
@@ -35,7 +48,7 @@ def extract_type_info(clang_type) -> TypeInfo:
     # Pointer handling
     if clang_type.kind == TypeKind.POINTER:
         pointee = clang_type.get_pointee()
-        pointee_info = extract_type_info(pointee)
+        pointee_info = extract_type_info(pointee, processing_types)
 
         return TypeInfo(
             name=clang_type.spelling,
@@ -44,10 +57,17 @@ def extract_type_info(clang_type) -> TypeInfo:
             pointer_to=pointee_info,
         )
 
+    elif clang_type.kind == TypeKind.ELABORATED:
+        canonical = clang_type.get_canonical()
+        underlying_info = extract_type_info(canonical, processing_types)
+
+        underlying_info.name = clang_type.spelling
+        return underlying_info
+
     # Array handling - now handles both CONSTANTARRAY and INCOMPLETEARRAY
     elif clang_type.kind in (TypeKind.CONSTANTARRAY, TypeKind.INCOMPLETEARRAY):
         element_type = clang_type.get_array_element_type()
-        element_info = extract_type_info(element_type)
+        element_info = extract_type_info(element_type, processing_types)
 
         # For constant arrays, get the size, for incomplete arrays it's None
         array_size = None
@@ -68,7 +88,7 @@ def extract_type_info(clang_type) -> TypeInfo:
 
     # Function pointer handling
     elif clang_type.kind == TypeKind.FUNCTIONPROTO:
-        return_type_info = extract_type_info(clang_type.get_result())
+        return_type_info = extract_type_info(clang_type.get_result(), processing_types)
         arg_types = []
 
         for i in range(clang_type.get_num_arg_types()):
@@ -101,8 +121,11 @@ def extract_type_info(clang_type) -> TypeInfo:
 
             field_name = field.spelling or ""
             field_type = field.type.spelling
-            field_type_info = extract_type_info(field.type)
-            fields.append(TypeInfo(name=field_name, base_type=field_type, pointer_to=field_type_info))
+            field_info = extract_type_info(field.type, processing_types)
+            field_info.name = f"{field_type} {field_name}"
+            fields.append(field_info)
+
+        logging.debug(f"Found {len(fields)} fields in {clang_type.spelling}")
 
         # We could extract fields here but it would require additional traversal
         return TypeInfo(
@@ -220,7 +243,7 @@ def extract_extern_functions(
                         logging.debug(f"Found extern function: {function_name}")
                 except Exception as e:
                     # Some cursors might not have linkage information
-                    logging.debug(f"Error processing function: {e}")
+                    logging.error(f"Error processing function: {e}")
                     pass
             elif cursor.kind == CursorKind.TYPEDEF_DECL:
                 try:
@@ -237,7 +260,7 @@ def extract_extern_functions(
                             underlying_type=underlying_type,
                         )
                     )
-                    logging.debug(f"Found typedef: {typedef_name} -> {underlying_type}")
+                    logging.debug(f"Found typedef: \"{typedef_name}\" -> \"{underlying_type}\"")
                 except Exception as e:
                     logging.debug(f"Error processing typedef: {e}")
                     pass
