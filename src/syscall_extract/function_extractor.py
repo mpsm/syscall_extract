@@ -94,6 +94,16 @@ def extract_type_info(clang_type) -> TypeInfo:
         elif decl.kind == CursorKind.UNION_DECL:
             struct_type = StructType.UNION
 
+        fields = []
+        for field in decl.get_children():
+            if not field.kind == CursorKind.FIELD_DECL:
+                continue
+
+            field_name = field.spelling or ""
+            field_type = field.type.spelling
+            field_type_info = extract_type_info(field.type)
+            fields.append(TypeInfo(name=field_name, base_type=field_type, pointer_to=field_type_info))
+
         # We could extract fields here but it would require additional traversal
         return TypeInfo(
             name=clang_type.spelling,
@@ -101,6 +111,7 @@ def extract_type_info(clang_type) -> TypeInfo:
             qualifiers=qualifiers,
             is_structural=True,
             struct_type=struct_type,
+            struct_fields=fields,
         )
 
     # Enum handling
@@ -134,6 +145,29 @@ def extract_type_info(clang_type) -> TypeInfo:
         )
 
 
+def add_to_type_store(type_store: Dict[str, TypeInfo], type_info: TypeInfo) -> None:
+    """Recursively add type information to the type store."""
+    if type_info.name not in type_store:
+        type_store[type_info.name] = type_info
+
+    if type_info.pointer_to:
+        add_to_type_store(type_store, type_info.pointer_to)
+
+    if type_info.array_element:
+        add_to_type_store(type_store, type_info.array_element)
+
+    if type_info.return_type:
+        add_to_type_store(type_store, type_info.return_type)
+
+    if type_info.arguments:
+        for arg in type_info.arguments:
+            add_to_type_store(type_store, arg)
+
+    if type_info.struct_fields:
+        for field in type_info.struct_fields:
+            add_to_type_store(type_store, field)
+
+
 def extract_extern_functions(
     header_content: str, header_name: str
 ) -> Tuple[List[Function], List[Typedef], Dict[str, TypeInfo]]:
@@ -165,14 +199,14 @@ def extract_extern_functions(
                         function_name = cursor.spelling
                         # Extract detailed return type info
                         return_type = cursor.result_type.spelling
-                        type_store[return_type] = extract_type_info(cursor.result_type)
+                        add_to_type_store(type_store, extract_type_info(cursor.result_type))
 
                         # Get arguments with detailed type info
                         args = []
                         for arg in cursor.get_arguments():
                             arg_name = arg.spelling or ""  # Use empty string if no name
                             arg_type = arg.type.spelling
-                            type_store[arg_type] = extract_type_info(arg.type)
+                            add_to_type_store(type_store, extract_type_info(arg.type))
                             args.append(FunctionArg(name=arg_name, type=arg_type))
 
                         # Create Function object
@@ -194,7 +228,8 @@ def extract_extern_functions(
 
                     # Extract detailed type information; get the canonical type to avoid recursive typedefs
                     underlying_type = cursor.underlying_typedef_type.get_canonical().spelling
-                    type_store[underlying_type] = extract_type_info(cursor.underlying_typedef_type)
+                    add_to_type_store(type_store, extract_type_info(cursor.type))
+                    add_to_type_store(type_store, extract_type_info(cursor.underlying_typedef_type))
 
                     typedefs.append(
                         Typedef(
