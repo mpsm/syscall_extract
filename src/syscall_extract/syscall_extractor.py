@@ -181,11 +181,11 @@ def extract_syscalls(args) -> SyscallsContext:
             # Collect typedefs needed for function arguments
             for arg in func.arguments:
                 if arg.type in typedefs_store:
-                    typedefs_needed.add(arg.type)
+                    typedefs_needed.add(typedefs_store[arg.type])
 
             # Add typedef for return type
             if func.return_type in typedefs_store:
-                typedefs_needed.add(func.return_type)
+                typedefs_needed.add(typedefs_store[func.return_type])
 
     logging.debug(
         f"Found {len(syscalls)} syscall definitions, "
@@ -200,5 +200,5 @@ def extract_syscalls(args) -> SyscallsContext:
         f"Found {len(type_store)} unique relevant types in system headers")
 
     return SyscallsContext(
-        syscalls=syscalls, typedefs=list(typedefs_store.values()), type_store=type_store
+        syscalls=syscalls, typedefs=list(typedefs_needed), type_store=type_store
     )

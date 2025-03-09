@@ -81,6 +81,9 @@ class Typedef:
     name: str
     underlying_type: str
 
+    def __hash__(self):
+        return hash(self.name)
+
 
 @dataclass
 class FunctionArg:
