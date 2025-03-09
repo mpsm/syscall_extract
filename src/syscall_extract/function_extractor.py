@@ -4,7 +4,7 @@ import tempfile
 from typing import Dict, List, Tuple
 
 from clang.cindex import Index, CursorKind, TranslationUnit, TypeKind
-from .model import TypeQualifier, StorageClass, StructType, TypeInfo, Typedef, FunctionArg, Function
+from .model import TypeQualifier, StorageClass, StructType, TypeInfo, Typedef, FunctionArg, Function, StructField
 
 
 def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
@@ -120,14 +120,11 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
                 continue
 
             field_name = field.spelling or ""
-            field_type = field.type.spelling
             field_info = extract_type_info(field.type, processing_types)
-            field_info.name = f"{field_type} {field_name}"
-            fields.append(field_info)
+            fields.append(StructField(name=field_name, type_info=field_info))
 
         logging.debug(f"Found {len(fields)} fields in {clang_type.spelling}")
 
-        # We could extract fields here but it would require additional traversal
         return TypeInfo(
             name=clang_type.spelling,
             base_type=base_name,
@@ -188,7 +185,7 @@ def add_to_type_store(type_store: Dict[str, TypeInfo], type_info: TypeInfo) -> N
 
     if type_info.struct_fields:
         for field in type_info.struct_fields:
-            add_to_type_store(type_store, field)
+            add_to_type_store(type_store, field.type_info)
 
 
 def extract_extern_functions(

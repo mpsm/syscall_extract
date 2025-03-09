@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, ForwardRef
+
+
+TypeInfo = ForwardRef('TypeInfo')
 
 
 class TypeQualifier(Enum):
@@ -24,6 +27,13 @@ class StructType(Enum):
 
 
 @dataclass
+class StructField:
+    """Represents a field in a struct or union"""
+    name: str
+    type_info: TypeInfo
+
+
+@dataclass
 class TypeInfo:
     name: str
     base_type: Optional[str] = None
@@ -42,7 +52,7 @@ class TypeInfo:
 
     is_structural: bool = False
     struct_type: Optional[StructType] = None
-    struct_fields: Optional[List["TypeInfo"]] = None
+    struct_fields: Optional[List[StructField]] = None
 
     def __str__(self):
         if self.is_structural:
