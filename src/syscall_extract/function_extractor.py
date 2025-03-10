@@ -62,6 +62,7 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
         underlying_info = extract_type_info(canonical, processing_types)
 
         underlying_info.name = clang_type.spelling
+        underlying_info.is_elaborated = True
         return underlying_info
 
     # Array handling - now handles both CONSTANTARRAY and INCOMPLETEARRAY
@@ -89,8 +90,6 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
     # Function pointer handling
     elif clang_type.kind == TypeKind.FUNCTIONPROTO:
         return_type_info = extract_type_info(clang_type.get_result(), processing_types)
-
-        logging.warning(f"Function pointer: {clang_type.spelling}")
         arg_types = [extract_type_info(arg_type, processing_types) for arg_type in clang_type.argument_types()]
 
         return TypeInfo(

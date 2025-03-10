@@ -54,6 +54,8 @@ class TypeInfo:
     struct_type: Optional[StructType] = None
     struct_fields: Optional[List[StructField]] = None
 
+    is_elaborated: bool = False
+
     def __str__(self):
         if self.is_structural:
             if self.struct_type == StructType.ENUM:
