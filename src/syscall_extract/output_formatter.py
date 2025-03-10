@@ -156,7 +156,8 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
     types_added = set()
 
     def check_and_add(flat_type, types_to_add, types_added):
-        if (flat_type.is_elaborated or flat_type.storage_class == StorageClass.TYPEDEF) and flat_type.name not in types_added:
+        if (flat_type.is_elaborated or flat_type.storage_class == StorageClass.TYPEDEF) \
+                and flat_type.name not in types_added:
             types_to_add.append(flat_type)
             types_added.add(flat_type.name)
             logging.debug(
@@ -173,6 +174,27 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
                     check_and_add(flat_type, types_to_add, types_added)
 
     return types_to_add
+
+
+def output_c_struct(struct_info) -> list:
+    if struct_info.struct_anonymous:
+        return
+
+    lines = []
+    indent = 4*" "
+    struct_name = struct_info.base_type
+    lines.append("")
+    lines.append(f"{struct_name} {{")
+    for field in struct_info.struct_fields:
+        if field.type_info.is_array:
+            lines.append(
+                f"{indent}{get_unqualified_type_name(field.type_info.array_element)} {field.name}[{field.type_info.array_size}];"
+            )
+        else:
+            lines.append(f"{indent}{get_unqualified_type_name(field.type_info)} {field.name};")
+    lines.append("};")
+
+    return lines
 
 
 def format_output_header(syscalls_ctx: SyscallsContext) -> str:
@@ -197,6 +219,7 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
     lines.append("/* Type definitions */")
     types_to_add = get_types_to_add(syscalls_ctx)
     types_added = set()
+    struct_lines = []
     for type_info in types_to_add:
         unqualified_name = get_unqualified_type_name(type_info)
         if unqualified_name in types_added:
@@ -212,12 +235,14 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
                 elif not unqualified_name.startswith(type_info.struct_type.name.lower()):
                     lines.append(f"typedef struct {unqualified_name} {unqualified_name};")
                 else:
-                    lines.append(f"{unqualified_name};")
+                    struct_lines.extend(output_c_struct(type_info))
                 types_added.add(unqualified_name)
+
+    lines.extend(struct_lines)
+    lines.append("")
 
     lines.extend(
         [
-            "",
             "/* Syscall function prototypes */",
         ]
     )

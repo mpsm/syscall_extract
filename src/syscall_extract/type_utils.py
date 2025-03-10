@@ -25,6 +25,9 @@ def flattened(type_info: TypeInfo):
 
 
 def get_unqualified_type_name(type_info: TypeInfo) -> str:
+    if type_info.qualifiers is None:
+        return type_info.name
+
     coc = ""
     if TypeQualifier.CONST in type_info.qualifiers:
         coc += "const "
