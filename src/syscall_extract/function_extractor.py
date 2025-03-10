@@ -89,11 +89,9 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
     # Function pointer handling
     elif clang_type.kind == TypeKind.FUNCTIONPROTO:
         return_type_info = extract_type_info(clang_type.get_result(), processing_types)
-        arg_types = []
 
-        for i in range(clang_type.get_num_arg_types()):
-            arg_type = clang_type.get_arg_type(i)
-            arg_types.append(extract_type_info(arg_type))
+        logging.warning(f"Function pointer: {clang_type.spelling}")
+        arg_types = [extract_type_info(arg_type, processing_types) for arg_type in clang_type.argument_types()]
 
         return TypeInfo(
             name=clang_type.spelling,
