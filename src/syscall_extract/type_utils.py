@@ -1,4 +1,4 @@
-from .model import TypeInfo
+from .model import TypeInfo, TypeQualifier
 
 
 def flattened(type_info: TypeInfo):
@@ -22,3 +22,22 @@ def flattened(type_info: TypeInfo):
     if type_info.struct_fields:
         for field in type_info.struct_fields:
             yield from flattened(field.type_info)
+
+
+def get_unqualified_type_name(type_info: TypeInfo) -> str:
+    coc = ""
+    if TypeQualifier.CONST in type_info.qualifiers:
+        coc += "const "
+    if TypeQualifier.VOLATILE in type_info.qualifiers:
+        coc += "volatile "
+    if TypeQualifier.RESTRICT in type_info.qualifiers:
+        coc += "restrict "
+    coc = coc.strip()
+
+    type_name = type_info.name
+    if type_info.is_pointer():
+        type_name = type_name.removesuffix(coc).strip()
+    else:
+        type_name = type_name.removeprefix(coc).strip()
+
+    return type_name

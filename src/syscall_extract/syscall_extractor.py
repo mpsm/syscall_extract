@@ -192,9 +192,8 @@ def extract_syscalls(args) -> SyscallsContext:
             for arg in func.arguments:
                 if arg.type in type_store:
                     types_needed[arg.type] = type_store[arg.type]
-
             if func.return_type in type_store:
-                types_needed[func.return_type] = type_store[arg.type]
+                types_needed[func.return_type] = type_store[func.return_type]
 
     logging.debug(
         f"Found {len(syscalls)} syscall definitions, "

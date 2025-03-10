@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import tempfile
 from typing import Dict, List, Tuple
 
@@ -122,6 +123,9 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
 
         logging.debug(f"Found {len(fields)} fields in {clang_type.spelling}")
 
+        anonymous = re.match(r"^(struct|union)(?:\s+|\s+\w+::|::)\(unnamed(?:\s+(struct|union))?\s+at\s+.*:\d+:\d+\)$",
+                             clang_type.spelling) is not None
+
         return TypeInfo(
             name=clang_type.spelling,
             base_type=base_name,
@@ -129,6 +133,7 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
             is_structural=True,
             struct_type=struct_type,
             struct_fields=fields,
+            struct_anonymous=anonymous
         )
 
     # Enum handling

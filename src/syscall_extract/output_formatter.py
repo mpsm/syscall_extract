@@ -4,7 +4,8 @@ import os
 from collections import defaultdict
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
-from .model import SyscallsContext
+from .model import SyscallsContext, StorageClass, StructType
+from .type_utils import flattened, get_unqualified_type_name
 
 
 def format_output_json(syscalls_ctx: SyscallsContext) -> str:
@@ -150,6 +151,30 @@ def format_output_text(syscalls_ctx: SyscallsContext) -> str:
     return "\n".join(lines)
 
 
+def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
+    types_to_add = []
+    types_added = set()
+
+    def check_and_add(flat_type, types_to_add, types_added):
+        if (flat_type.is_elaborated or flat_type.storage_class == StorageClass.TYPEDEF) and flat_type.name not in types_added:
+            types_to_add.append(flat_type)
+            types_added.add(flat_type.name)
+            logging.debug(
+                f"Adding type {flat_type.name} to the output list. Root type: {flat_type.name}")
+
+    for _, syscall in sorted(syscalls_ctx.syscalls.items()):
+        if syscall.function:
+            return_type_info = syscalls_ctx.type_store[syscall.function.return_type]
+            for flat_type in flattened(return_type_info):
+                check_and_add(flat_type, types_to_add, types_added)
+            for arg in syscall.function.arguments:
+                arg_type_info = syscalls_ctx.type_store[arg.type]
+                for flat_type in flattened(arg_type_info):
+                    check_and_add(flat_type, types_to_add, types_added)
+
+    return types_to_add
+
+
 def format_output_header(syscalls_ctx: SyscallsContext) -> str:
     """Format syscalls and typedefs as a C header file."""
     logging.info("Formatting syscalls and typedefs as a C header")
@@ -162,28 +187,33 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
         "#ifdef __cplusplus",
         'extern "C" {',
         "#endif",
-        ""
+        "",
         "#ifndef restrict",
         "#define restrict __restrict",
         "#endif",
         "",
     ]
 
-    # Add typedefs
-    if syscalls_ctx.typedefs:
-        lines.append("/* Type definitions */")
-        for typedef in sorted(syscalls_ctx.typedefs, key=lambda t: t.name):
-            if "(" in typedef.underlying_type or "[" in typedef.underlying_type:
-                lines.append(
-                    f"typedef {syscalls_ctx.type_store[typedef.underlying_type].to_argument_name(typedef.name)};")
-                continue
-            lines.append(f"typedef {typedef.underlying_type} {typedef.name};")
-        lines.append("")
+    lines.append("/* Type definitions */")
+    types_to_add = get_types_to_add(syscalls_ctx)
+    types_added = set()
+    for type_info in types_to_add:
+        unqualified_name = get_unqualified_type_name(type_info)
+        if unqualified_name in types_added:
+            continue
 
-    lines.append("/* Syscall definitions */")
-
-    for number, syscall in sorted(syscalls_ctx.syscalls.items()):
-        lines.append(f"#define SYS_{syscall.name} {syscall.number}")
+        if type_info.is_basic_type() or type_info.is_pointer():
+            lines.append(f"typedef {type_info.base_type} {unqualified_name};")
+            types_added.add(unqualified_name)
+        elif type_info.is_elaborated and type_info.is_structural:
+            if type_info.struct_type == StructType.STRUCT:
+                if type_info.struct_anonymous:
+                    continue
+                elif not unqualified_name.startswith(type_info.struct_type.name.lower()):
+                    lines.append(f"typedef struct {unqualified_name} {unqualified_name};")
+                else:
+                    lines.append(f"{unqualified_name};")
+                types_added.add(unqualified_name)
 
     lines.extend(
         [
@@ -192,7 +222,7 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
         ]
     )
 
-    for number, syscall in sorted(syscalls_ctx.syscalls.items()):
+    for _, syscall in sorted(syscalls_ctx.syscalls.items()):
         if syscall.function:
             args_str = ", ".join(
                 f"{syscalls_ctx.type_store[arg.type].to_argument_name(arg.name)}"
