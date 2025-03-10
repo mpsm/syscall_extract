@@ -189,6 +189,15 @@ def add_to_type_store(type_store: Dict[str, TypeInfo], type_info: TypeInfo) -> N
         for field in type_info.struct_fields:
             add_to_type_store(type_store, field.type_info)
 
+    # special case - override forward struct/union/enum declarations
+    if type_info.name in type_store:
+        old_type_info = type_store[type_info.name]
+        if type_info.is_structural and type_info.struct_fields is not None \
+                and len(type_info.struct_fields) > 0 \
+                and (old_type_info.struct_fields is None or len(old_type_info.struct_fields) == 0):
+            logging.debug(f"Overriding forward declaration of {type_info.name} with detailed type information")
+            type_store[type_info.name] = type_info
+
 
 def extract_extern_functions(
     header_content: str, header_name: str

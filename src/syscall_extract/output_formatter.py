@@ -188,7 +188,8 @@ def output_c_struct(struct_info) -> list:
     for field in struct_info.struct_fields:
         if field.type_info.is_array:
             lines.append(
-                f"{indent}{get_unqualified_type_name(field.type_info.array_element)} {field.name}[{field.type_info.array_size}];"
+                f"{indent}{get_unqualified_type_name(field.type_info.array_element)} "
+                f"{field.name}[{field.type_info.array_size}];"
             )
         else:
             lines.append(f"{indent}{get_unqualified_type_name(field.type_info)} {field.name};")
