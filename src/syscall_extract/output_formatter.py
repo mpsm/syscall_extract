@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
 from .model import SyscallsContext, StorageClass, StructType, TypeInfo
@@ -152,16 +152,34 @@ def format_output_text(syscalls_ctx: SyscallsContext) -> str:
 
 
 def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
-    types_to_add = []
+    types_to_add = OrderedDict()
     types_added = set()
 
     def check_and_add(flat_type, types_to_add, types_added):
-        if (flat_type.is_elaborated or flat_type.storage_class == StorageClass.TYPEDEF) \
-                and flat_type.name not in types_added:
-            types_to_add.append(flat_type)
-            types_added.add(flat_type.name)
+        flat_type_name = get_unqualified_type_name(flat_type)
+        logging.debug(f"Checking type {flat_type_name}")
+        if (flat_type.is_elaborated or flat_type.storage_class == StorageClass.TYPEDEF):
+            if flat_type_name in types_added:
+                logging.debug(f"Type {flat_type_name} already added")
+                type_added = types_to_add[flat_type_name]
+                if not type_added.is_structural:
+                    return
+
+                if type_added.struct_anonymous:
+                    return
+
+                if type_added.struct_type == StructType.ENUM and \
+                        type_added.enum_constants is not None and len(type_added.enum_constants) > 0:
+                    return
+
+                if type_added.struct_fields is not None and len(type_added.struct_fields) > 0:
+                    return
+
+            logging.debug(f"Adding type {flat_type_name}")
+            types_to_add[flat_type_name] = flat_type
+            types_added.add(flat_type_name)
             logging.debug(
-                f"Adding type {flat_type.name} to the output list. Root type: {flat_type.name}")
+                f"Adding type {flat_type_name} to the output list. Root type: {flat_type_name}")
 
     for _, syscall in sorted(syscalls_ctx.syscalls.items()):
         if syscall.function:
@@ -173,7 +191,7 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
                 for flat_type in reversed(list(flattened(arg_type_info))):
                     check_and_add(flat_type, types_to_add, types_added)
 
-    return types_to_add
+    return types_to_add.values()
 
 
 C_INDENT = 4*" "
@@ -205,6 +223,12 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
             if field.type_info.struct_anonymous:
                 new_lines[-1] = f"{no_indent+C_INDENT}}} {field.name};"
             lines.extend(new_lines)
+        elif field.type_info.is_pointer() and field.type_info.pointer_to.is_function:
+            function = field.type_info.pointer_to
+            field_line = f"{function.return_type.name} (*{field.name})("
+            field_line += ", ".join(arg.name for arg in function.arguments)
+            field_line += ");"
+            lines.append(f"{indent}{field_line}")
         else:
             lines.append(f"{indent}{get_unqualified_type_name(field.type_info)} {field.name};")
     lines.append(f"{no_indent}}};")
