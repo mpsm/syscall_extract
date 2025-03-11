@@ -255,11 +255,11 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
         if unqualified_name in types_added:
             continue
 
-        logging.warning(f"Adding type {unqualified_name} to the output list")
+        logging.debug(f"Adding type {unqualified_name} to the output list")
 
-        if type_info.is_basic_type() or (type_info.is_typedef
-                                         and (type_info.underlying_type.is_basic_type() or
-                                              type_info.underlying_type.is_pointer())):
+        if type_info.is_basic_type() or type_info.is_pointer() or (type_info.is_typedef
+                                                                   and (type_info.underlying_type.is_basic_type() or
+                                                                        type_info.underlying_type.is_pointer())):
             lines.append(f"typedef {type_info.base_type} {unqualified_name};")
             types_added.add(unqualified_name)
         elif type_info.is_elaborated and type_info.is_structural:
