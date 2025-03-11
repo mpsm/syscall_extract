@@ -202,7 +202,7 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
                 f"{indent}{get_unqualified_type_name(field.type_info.array_element)} "
                 f"{field.name}[{field.type_info.array_size}];"
             )
-        elif field.type_info.is_structural and (field.type_info.name == field.type_info.base_type
+        elif field.type_info.is_structural and (not field.type_info.is_elaborated
                                                 or field.type_info.struct_anonymous):
             new_lines = output_c_struct(field.type_info, indent + C_INDENT, no_indent + C_INDENT)
             if field.type_info.struct_anonymous:
