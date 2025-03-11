@@ -4,7 +4,7 @@ import os
 from collections import defaultdict
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
-from .model import SyscallsContext, StorageClass, StructType, TypeInfo
+from .model import SyscallsContext, StorageClass, TypeInfo
 from .type_utils import flattened, get_unqualified_type_name
 
 
@@ -187,6 +187,9 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
         no_indent = ""
 
     struct_name = struct_info.base_type
+    unqualified_name = get_unqualified_type_name(struct_info)
+    if struct_name != unqualified_name and not struct_info.struct_anonymous:
+        logging.warning(f"{get_unqualified_type_name(struct_info)} {struct_name} {struct_info.struct_anonymous}")
 
     if struct_info.struct_anonymous:
         lines.append(f"{no_indent}{struct_info.struct_type.name.lower()} {{")
@@ -199,7 +202,8 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
                 f"{indent}{get_unqualified_type_name(field.type_info.array_element)} "
                 f"{field.name}[{field.type_info.array_size}];"
             )
-        elif field.type_info.is_structural:
+        elif field.type_info.is_structural and (field.type_info.name == field.type_info.base_type
+                                                or field.type_info.struct_anonymous):
             new_lines = output_c_struct(field.type_info, indent + C_INDENT, no_indent + C_INDENT)
             if field.type_info.struct_anonymous:
                 new_lines[-1] = f"{no_indent+C_INDENT}}} {field.name};"
@@ -252,8 +256,12 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
                 if not new_struct_lines[0].startswith(struct_kind):
                     new_struct_lines[0] = f"{struct_kind} " + new_struct_lines[0]
                 struct_lines.extend(new_struct_lines)
-                struct_lines.append(
-                    f"typedef {struct_kind} {unqualified_name} {unqualified_name};")
+                if type_info.base_type.startswith(struct_kind):
+                    struct_lines.append(
+                        f"typedef {type_info.base_type} {unqualified_name};")
+                else:
+                    struct_lines.append(
+                        f"typedef {struct_kind} {type_info.base_type} {unqualified_name};")
             else:
                 struct_lines.extend(output_c_struct(type_info))
             types_added.add(unqualified_name)
