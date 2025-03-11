@@ -4,7 +4,7 @@ import os
 from collections import defaultdict
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
-from .model import SyscallsContext, StorageClass, TypeInfo
+from .model import SyscallsContext, StorageClass, StructType, TypeInfo
 from .type_utils import flattened, get_unqualified_type_name
 
 
@@ -187,7 +187,6 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
         no_indent = ""
 
     struct_name = struct_info.base_type
-    unqualified_name = get_unqualified_type_name(struct_info)
 
     if struct_info.struct_anonymous:
         lines.append(f"{no_indent}{struct_info.struct_type.name.lower()} {{")
@@ -209,6 +208,21 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
         else:
             lines.append(f"{indent}{get_unqualified_type_name(field.type_info)} {field.name};")
     lines.append(f"{no_indent}}};")
+
+    return lines
+
+
+def output_c_enum(enum_info: TypeInfo) -> list:
+    lines = []
+
+    lines.append(f"enum {enum_info.base_type} {{")
+    for constant in enum_info.enum_constants:
+        if constant.value is None:
+            lines.append(f"{C_INDENT}{constant.name},")
+        else:
+            lines.append(f"{C_INDENT}{constant.name} = {constant.value},")
+
+    lines.append("};")
 
     return lines
 
@@ -241,7 +255,11 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
         if unqualified_name in types_added:
             continue
 
-        if type_info.is_basic_type() or type_info.is_pointer():
+        logging.warning(f"Adding type {unqualified_name} to the output list")
+
+        if type_info.is_basic_type() or (type_info.is_typedef
+                                         and (type_info.underlying_type.is_basic_type() or
+                                              type_info.underlying_type.is_pointer())):
             lines.append(f"typedef {type_info.base_type} {unqualified_name};")
             types_added.add(unqualified_name)
         elif type_info.is_elaborated and type_info.is_structural:
@@ -250,7 +268,10 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
             if type_info.struct_anonymous:
                 continue
             elif not unqualified_name.startswith(struct_kind):
-                new_struct_lines = output_c_struct(type_info)
+                if type_info.struct_type == StructType.ENUM:
+                    new_struct_lines = output_c_enum(type_info)
+                else:
+                    new_struct_lines = output_c_struct(type_info)
                 if not new_struct_lines[0].startswith(struct_kind):
                     new_struct_lines[0] = f"{struct_kind} " + new_struct_lines[0]
 

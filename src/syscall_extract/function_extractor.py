@@ -5,7 +5,8 @@ import tempfile
 from typing import Dict, List, Tuple
 
 from clang.cindex import Index, CursorKind, TranslationUnit, TypeKind
-from .model import TypeQualifier, StorageClass, StructType, TypeInfo, Typedef, FunctionArg, Function, StructField
+from .model import TypeQualifier, StorageClass, StructType, TypeInfo, \
+    Typedef, FunctionArg, Function, StructField, EnumConstant
 
 
 def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
@@ -138,22 +139,49 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
 
     # Enum handling
     elif clang_type.kind == TypeKind.ENUM:
+        decl = clang_type.get_declaration()
+        enum_constants = []
+
+        # Extract enum constants
+        for enum_constant in decl.get_children():
+            if enum_constant.kind == CursorKind.ENUM_CONSTANT_DECL:
+                name = enum_constant.spelling
+                # Get the value if available
+                value = None
+                try:
+                    value = enum_constant.enum_value
+                except Exception as e:
+                    logging.debug(f"Could not get enum value for {name} ({e})")
+
+                enum_constants.append(EnumConstant(name=name, value=value))
+
+        logging.debug(f"Found {len(enum_constants)} constants in enum {clang_type.spelling}")
+
         return TypeInfo(
             name=clang_type.spelling,
             base_type=base_name,
             qualifiers=qualifiers,
             is_structural=True,
             struct_type=StructType.ENUM,
+            enum_constants=enum_constants
         )
 
     # Typedef handling
     elif clang_type.kind == TypeKind.TYPEDEF:
         storage_class = StorageClass.TYPEDEF
         underlying = clang_type.get_canonical()
+        underlying_info = extract_type_info(underlying, processing_types)
+
+        # seems like a hack, but it forces to save enums, which for some reasons
+        # are handled differently by clang, than structs and unions
+        if underlying_info.is_structural:
+            underlying_info.is_elaborated = True
 
         return TypeInfo(
             name=clang_type.spelling,
+            is_typedef=True,
             base_type=underlying.spelling,
+            underlying_type=underlying_info,
             qualifiers=qualifiers,
             storage_class=storage_class,
         )
@@ -170,6 +198,7 @@ def extract_type_info(clang_type, processing_types=None) -> TypeInfo:
 def add_to_type_store(type_store: Dict[str, TypeInfo], type_info: TypeInfo) -> None:
     """Recursively add type information to the type store."""
     if type_info.name not in type_store:
+        logging.debug(f"Adding type info for {type_info.name} to type store, kind: {type_info.base_type}")
         type_store[type_info.name] = type_info
 
     if type_info.pointer_to:

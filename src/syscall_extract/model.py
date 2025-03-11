@@ -27,6 +27,13 @@ class StructType(Enum):
 
 
 @dataclass
+class EnumConstant:
+    """Represents a constant in an enum"""
+    name: str
+    value: Optional[int] = None
+
+
+@dataclass
 class StructField:
     """Represents a field in a struct or union"""
     name: str
@@ -40,25 +47,31 @@ class TypeInfo:
     qualifiers: List[TypeQualifier] = None
     storage_class: Optional[StorageClass] = None
 
+    is_typedef: bool = False
+    underlying_type: Optional[TypeInfo] = None
+
     pointer_to: Optional["TypeInfo"] = None
 
     is_array: bool = False
     array_size: Optional[int] = None
-    array_element: Optional["TypeInfo"] = None
+    array_element: Optional[TypeInfo] = None
 
     is_function: bool = False
-    return_type: Optional["TypeInfo"] = None
-    arguments: Optional[List["TypeInfo"]] = None
+    return_type: Optional[TypeInfo] = None
+    arguments: Optional[List[TypeInfo]] = None
 
     is_structural: bool = False
     struct_type: Optional[StructType] = None
     struct_fields: Optional[List[StructField]] = None
     struct_anonymous: bool = False
 
+    enum_constants: Optional[List[EnumConstant]] = None
+
     is_elaborated: bool = False
 
     def is_basic_type(self) -> bool:
-        return not self.is_array and not self.is_function and not self.is_structural and not self.is_pointer()
+        return not self.is_array and not self.is_function and not self.is_structural and not self.is_pointer() \
+            and not self.is_typedef
 
     def is_primitive(self) -> bool:
         return (
