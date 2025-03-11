@@ -255,13 +255,11 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
                 new_struct_lines = output_c_struct(type_info)
                 if not new_struct_lines[0].startswith(struct_kind):
                     new_struct_lines[0] = f"{struct_kind} " + new_struct_lines[0]
+
+                new_struct_lines[0] = f"typedef {new_struct_lines[0]}"
+                new_struct_lines[-1] = new_struct_lines[-1].strip(';')
+                new_struct_lines[-1] = f"{new_struct_lines[-1]} {unqualified_name};"
                 struct_lines.extend(new_struct_lines)
-                if type_info.base_type.startswith(struct_kind):
-                    struct_lines.append(
-                        f"typedef {type_info.base_type} {unqualified_name};")
-                else:
-                    struct_lines.append(
-                        f"typedef {struct_kind} {type_info.base_type} {unqualified_name};")
             else:
                 struct_lines.extend(output_c_struct(type_info))
             types_added.add(unqualified_name)
