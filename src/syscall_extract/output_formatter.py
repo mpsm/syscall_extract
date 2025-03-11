@@ -183,7 +183,7 @@ def output_c_struct(struct_info) -> list:
     lines = []
     indent = 4*" "
     struct_name = struct_info.base_type
-    lines.append("")
+
     lines.append(f"{struct_name} {{")
     for field in struct_info.struct_fields:
         if field.type_info.is_array:
@@ -234,11 +234,17 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
                 if type_info.struct_anonymous:
                     continue
                 elif not unqualified_name.startswith(type_info.struct_type.name.lower()):
-                    lines.append(f"typedef struct {unqualified_name} {unqualified_name};")
+                    new_struct_lines = output_c_struct(type_info)
+                    new_struct_lines[0] = f"{type_info.struct_type.name.lower()} " + new_struct_lines[0]
+                    struct_lines.extend(new_struct_lines)
+                    struct_lines.append(
+                        f"typedef {type_info.struct_type.name.lower()} {unqualified_name} {unqualified_name};")
                 else:
                     struct_lines.extend(output_c_struct(type_info))
                 types_added.add(unqualified_name)
+                struct_lines.append("")
 
+    lines.append("")
     lines.extend(struct_lines)
     lines.append("")
 
