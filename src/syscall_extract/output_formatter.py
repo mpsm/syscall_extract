@@ -4,7 +4,7 @@ import os
 from collections import defaultdict
 
 from .dataclass_serialization import DataclassJSONEncoder, dataclass_to_dict
-from .model import SyscallsContext, StorageClass, StructType
+from .model import SyscallsContext, StorageClass, StructType, TypeInfo
 from .type_utils import flattened, get_unqualified_type_name
 
 
@@ -176,24 +176,37 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
     return types_to_add
 
 
-def output_c_struct(struct_info) -> list:
-    if struct_info.struct_anonymous:
-        return
+C_INDENT = 4*" "
 
+
+def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
     lines = []
-    indent = 4*" "
+    if indent is None:
+        indent = C_INDENT
+    if no_indent is None:
+        no_indent = ""
+
     struct_name = struct_info.base_type
 
-    lines.append(f"{struct_name} {{")
+    if struct_info.struct_anonymous:
+        lines.append(f"{no_indent}{struct_info.struct_type.name.lower()} {{")
+    else:
+        lines.append(f"{no_indent}{struct_name} {{")
+
     for field in struct_info.struct_fields:
         if field.type_info.is_array:
             lines.append(
                 f"{indent}{get_unqualified_type_name(field.type_info.array_element)} "
                 f"{field.name}[{field.type_info.array_size}];"
             )
+        elif field.type_info.is_structural:
+            new_lines = output_c_struct(field.type_info, indent + C_INDENT, no_indent + C_INDENT)
+            if field.type_info.struct_anonymous:
+                new_lines[-1] = f"{no_indent+C_INDENT}}} {field.name};"
+            lines.extend(new_lines)
         else:
             lines.append(f"{indent}{get_unqualified_type_name(field.type_info)} {field.name};")
-    lines.append("};")
+    lines.append(f"{no_indent}}};")
 
     return lines
 
@@ -230,19 +243,21 @@ def format_output_header(syscalls_ctx: SyscallsContext) -> str:
             lines.append(f"typedef {type_info.base_type} {unqualified_name};")
             types_added.add(unqualified_name)
         elif type_info.is_elaborated and type_info.is_structural:
-            if type_info.struct_type == StructType.STRUCT:
-                if type_info.struct_anonymous:
-                    continue
-                elif not unqualified_name.startswith(type_info.struct_type.name.lower()):
-                    new_struct_lines = output_c_struct(type_info)
-                    new_struct_lines[0] = f"{type_info.struct_type.name.lower()} " + new_struct_lines[0]
-                    struct_lines.extend(new_struct_lines)
-                    struct_lines.append(
-                        f"typedef {type_info.struct_type.name.lower()} {unqualified_name} {unqualified_name};")
-                else:
-                    struct_lines.extend(output_c_struct(type_info))
-                types_added.add(unqualified_name)
-                struct_lines.append("")
+            struct_kind = type_info.struct_type.name.lower()
+
+            if type_info.struct_anonymous:
+                continue
+            elif not unqualified_name.startswith(struct_kind):
+                new_struct_lines = output_c_struct(type_info)
+                if not new_struct_lines[0].startswith(struct_kind):
+                    new_struct_lines[0] = f"{struct_kind} " + new_struct_lines[0]
+                struct_lines.extend(new_struct_lines)
+                struct_lines.append(
+                    f"typedef {struct_kind} {unqualified_name} {unqualified_name};")
+            else:
+                struct_lines.extend(output_c_struct(type_info))
+            types_added.add(unqualified_name)
+            struct_lines.append("")
 
     lines.append("")
     lines.extend(struct_lines)
