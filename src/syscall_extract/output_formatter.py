@@ -175,6 +175,9 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
                 if type_added.struct_fields is not None and len(type_added.struct_fields) > 0:
                     return
 
+                logging.debug(f"Removing type {flat_type_name}; better match found")
+                del types_to_add[flat_type_name]
+
             logging.debug(f"Adding type {flat_type_name}")
             types_to_add[flat_type_name] = flat_type
             types_added.add(flat_type_name)
@@ -183,11 +186,16 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
 
     for _, syscall in sorted(syscalls_ctx.syscalls.items()):
         if syscall.function:
+            logging.debug(f"Checking syscall {syscall.name} for types to add")
             return_type_info = syscalls_ctx.type_store[syscall.function.return_type]
+            type_chain = flattened(return_type_info)
+            logging.debug("Return type chain: " + " -> ".join(t.name for t in type_chain))
             for flat_type in reversed(list(flattened(return_type_info))):
                 check_and_add(flat_type, types_to_add, types_added)
             for arg in syscall.function.arguments:
                 arg_type_info = syscalls_ctx.type_store[arg.type]
+                type_chain = flattened(arg_type_info)
+                logging.debug("Argument type chain: " + " -> ".join(t.name for t in type_chain))
                 for flat_type in reversed(list(flattened(arg_type_info))):
                     check_and_add(flat_type, types_to_add, types_added)
 
