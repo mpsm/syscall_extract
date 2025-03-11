@@ -166,11 +166,11 @@ def get_types_to_add(syscalls_ctx: SyscallsContext) -> list:
     for _, syscall in sorted(syscalls_ctx.syscalls.items()):
         if syscall.function:
             return_type_info = syscalls_ctx.type_store[syscall.function.return_type]
-            for flat_type in flattened(return_type_info):
+            for flat_type in reversed(list(flattened(return_type_info))):
                 check_and_add(flat_type, types_to_add, types_added)
             for arg in syscall.function.arguments:
                 arg_type_info = syscalls_ctx.type_store[arg.type]
-                for flat_type in flattened(arg_type_info):
+                for flat_type in reversed(list(flattened(arg_type_info))):
                     check_and_add(flat_type, types_to_add, types_added)
 
     return types_to_add
@@ -188,8 +188,6 @@ def output_c_struct(struct_info: TypeInfo, indent=None, no_indent=None) -> list:
 
     struct_name = struct_info.base_type
     unqualified_name = get_unqualified_type_name(struct_info)
-    if struct_name != unqualified_name and not struct_info.struct_anonymous:
-        logging.warning(f"{get_unqualified_type_name(struct_info)} {struct_name} {struct_info.struct_anonymous}")
 
     if struct_info.struct_anonymous:
         lines.append(f"{no_indent}{struct_info.struct_type.name.lower()} {{")
